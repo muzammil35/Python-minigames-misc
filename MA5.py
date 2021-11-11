@@ -3,6 +3,8 @@
 # Besides the lab and class notes, I used the following resources: 
 
 
+
+
 import sqlite3
 import matplotlib.pyplot as plt
 connection = None
