@@ -1,6 +1,7 @@
 from tkinter import Tk,BOTH, Canvas
 import time
 import random
+import sys
 
 class Window:
     
@@ -54,6 +55,7 @@ class Cell:
        self.has_right_wall = True
        self.has_top_wall = True
        self.has_bottom_wall = True
+       self.visited = False
        self._x1 = None
        self._x2 = None
        self._y1 = None
@@ -70,16 +72,29 @@ class Cell:
         self._y2 = y2
         if self.has_left_wall:
             line = Line(Point(x1, y1), Point(x1, y2))
-            self._win.draw_line(line)
+            self._win.draw_line(line,fill_color)
+        elif not self.has_left_wall:
+            line = Line(Point(x1, y1), Point(x1, y2))
+            self._win.draw_line(line,"black")
         if self.has_top_wall:
             line = Line(Point(x1, y1), Point(x2, y1))
-            self._win.draw_line(line)
+            self._win.draw_line(line,fill_color)
+        elif not self.has_top_wall:
+            line = Line(Point(x1, y1), Point(x2, y1))
+            self._win.draw_line(line,"black")
         if self.has_right_wall:
             line = Line(Point(x2, y1), Point(x2, y2))
-            self._win.draw_line(line)
+            self._win.draw_line(line,fill_color)
+        elif not self.has_right_wall:
+            line = Line(Point(x2, y1), Point(x2, y2))
+            self._win.draw_line(line,"black")
         if self.has_bottom_wall:
             line = Line(Point(x1, y2), Point(x2, y2))
-            self._win.draw_line(line)
+            self._win.draw_line(line,fill_color)
+        elif not self.has_bottom_wall:
+            line = Line(Point(x1, y2), Point(x2, y2
+                                             ))
+            self._win.draw_line(line,"black")
             
     def draw_move(self,to_cell,undo=False):
         
@@ -91,7 +106,7 @@ class Cell:
         to_x_mid = (to_cell._x1 + to_cell._x2) / 2
         to_y_mid = (to_cell._y1 + to_cell._y2) / 2
 
-        fill_color = "red"
+        fill_color = "blue"
         if undo:
             fill_color = "gray"
 
@@ -125,45 +140,47 @@ class Cell:
             
             
 class Maze:
-    
-    
-    def __init__(self,x1,y1,num_rows,num_cols,cell_size_x,cell_size_y,win=None):
-        
-        self.x1=x1
-        self.y1=y1
-        self.num_rows = num_rows
-        self.num_cols = num_cols 
-        self.cell_size_x = cell_size_x 
-        self.cell_size_y = cell_size_y 
-        self.win = win 
-        
+    def __init__(
+        self,
+        x1,
+        y1,
+        num_rows,
+        num_cols,
+        cell_size_x,
+        cell_size_y,
+        win=None
+    ):
         self._cells = []
-        
+        self._x1 = x1
+        self._y1 = y1
+        self._num_rows = num_rows
+        self._num_cols = num_cols
+        self._cell_size_x = cell_size_x
+        self._cell_size_y = cell_size_y
+        self._win = win
+
         self._create_cells()
-        
+
     def _create_cells(self):
-        
-        for i in range(self._num_rows):
+        for i in range(self._num_cols):
             col_cells = []
-            for j in range(self._num_cols):
+            for j in range(self._num_rows):
                 col_cells.append(Cell(self._win))
             self._cells.append(col_cells)
-        for i in range(self._num_rows):
-            for j in range(self._num_cols):
+        for i in range(self._num_cols):
+            for j in range(self._num_rows):
                 self._draw_cell(i, j)
-                
-    def _draw_cell(self,i,j):
-        
+
+    def _draw_cell(self, i, j):
         if self._win is None:
             return
         x1 = self._x1 + i * self._cell_size_x
         y1 = self._y1 + j * self._cell_size_y
         x2 = x1 + self._cell_size_x
         y2 = y1 + self._cell_size_y
-        self._cells[i][j].draw(x1, y1, x2, y2)
+        self._cells[i][j].Draw("white",x1, y1, x2, y2)
         self._animate()
-        
-        
+
     def _animate(self):
         if self._win is None:
             return
@@ -171,47 +188,155 @@ class Maze:
         time.sleep(0.05)
         
         
+    def _break_entrance_and_exit(self):
         
+        self._cells[0][0].has_top_wall = False
+        self._draw_cell(0,0)
+        self._cells[self._num_cols - 1][self._num_rows - 1].has_bottom_wall = False
+        self._draw_cell(self._num_cols - 1, self._num_rows - 1)
         
+    def _break_walls_r(self,i,j):
+        self._cells[i][j].visited = True
+        while(True):
+            directions = []
+            possible_visitors = []
             
+             # determine which cell(s) to visit next
+            # left
+            if i > 0 and not self._cells[i - 1][j].visited:
+                directions.append("left")
+                
+            # right
+            if i < self._num_cols - 1 and not self._cells[i + 1][j].visited:
+                directions.append("right")
+            # up
+            if j > 0 and not self._cells[i][j - 1].visited:
+                directions.append("up")
+            # down
+            if j < self._num_rows - 1 and not self._cells[i][j + 1].visited:
+                directions.append("down")
+            if(len(directions)==0):
+                self._draw_cell(i,j)
+                break
+            else:
+                
+                ran = random.choice(directions)
+                if(ran=="up"):
+                    self._cells[i][j-1].has_bottom_wall = False
+                    self._cells[i][j].has_top_wall = False
+                    self._break_walls_r(i,j-1)
+                if(ran=="down"):
+                    self._cells[i][j+1].has_top_wall = False
+                    self._cells[i][j].has_bottom_wall = False
+                    self._break_walls_r(i,j+1)
+                if(ran=="left"):
+                    self._cells[i-1][j].has_right_wall = False
+                    self._cells[i][j].has_left_wall = False
+                    self._break_walls_r(i-1,j)
+                if(ran=="right"):
+                    self._cells[i+1][j].has_left_wall = False
+                    self._cells[i][j].has_right_wall = False
+                    self._break_walls_r(i+1,j)
+                    
+    def _reset_cells_visted(self):
         
+        for col in self._cells:
             
-            
+            for cell in col:
+                cell.visited = False
+                
+                
+    def solve(self):
         
+        self._create_cells()
+        self._break_entrance_and_exit()
+        self._break_walls_r(0,0)
+        self._reset_cells_visted()
         
-            
-            
-    
-            
+        return(self._solve_r(0,0))
+                
+    def _solve_r(self,i,j):
         
-        
-    
-    
-        
+        self._animate()
+        self._cells[i][j].visited = True
+        if(i == self._num_cols-1 and j == self._num_rows-1):
+            return True
+         # move left if there is no wall and it hasn't been visited
+        if (
+            i > 0
+            and not self._cells[i][j].has_left_wall
+            and not self._cells[i - 1][j].visited
+        ):
+            self._cells[i][j].draw_move(self._cells[i - 1][j])
+            if self._solve_r(i - 1, j):
+                return True
+            else:
+                self._cells[i][j].draw_move(self._cells[i - 1][j], True)
 
+        # move right if there is no wall and it hasn't been visited
+        if (
+            i < self._num_cols - 1
+            and not self._cells[i][j].has_right_wall
+            and not self._cells[i + 1][j].visited
+        ):
+            self._cells[i][j].draw_move(self._cells[i + 1][j])
+            if self._solve_r(i + 1, j):
+                return True
+            else:
+                self._cells[i][j].draw_move(self._cells[i + 1][j], True)
 
+        # move up if there is no wall and it hasn't been visited
+        if (
+            j > 0
+            and not self._cells[i][j].has_top_wall
+            and not self._cells[i][j - 1].visited
+        ):
+            self._cells[i][j].draw_move(self._cells[i][j - 1])
+            if self._solve_r(i, j - 1):
+                return True
+            else:
+                self._cells[i][j].draw_move(self._cells[i][j - 1], True)
 
+        # move down if there is no wall and it hasn't been visited
+        if (
+            j < self._num_rows - 1
+            and not self._cells[i][j].has_bottom_wall
+            and not self._cells[i][j + 1].visited
+        ):
+            self._cells[i][j].draw_move(self._cells[i][j + 1])
+            if self._solve_r(i, j + 1):
+                return True
+            else:
+                self._cells[i][j].draw_move(self._cells[i][j + 1], True)
+
+        # we went the wrong way let the previous cell know by returning False
+        return False
+        
+        
+        
         
 def main():
     
-    
-    
-    win = Window(800,600)
-    pt1=Point(100,200)
-    pt2=Point(200,200)
-    pt3=Point(100,100)
-    
-    line = Line(pt3,pt2)
-    win.draw_line(line,'blue')
-    
-    pt4=Point(100,200)
-    pt5=Point(200,200)
-    pt6=Point(100,100)
+    num_rows = 12
+    num_cols = 16
+    margin = 50
+    screen_x = 800
+    screen_y = 600
+    cell_size_x = (screen_x - 2 * margin) / num_cols
+    cell_size_y = (screen_y - 2 * margin) / num_rows
 
-   
+    sys.setrecursionlimit(10000)
+    win = Window(screen_x, screen_y)
+
+    maze = Maze(margin,margin, 12, 16, cell_size_x, cell_size_y, win)\
+    
+    
+    print("maze created")
+    is_solveable = maze.solve()
+    if not is_solveable:
+        print("maze can not be solved!")
+    else:
+        print("maze solved!")
     win.wait_for_close()
     
 main()
-
-    
-    
